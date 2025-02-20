@@ -23,7 +23,8 @@ const setOpacity = (obj, opacity) => {
         }
     });
 };
-const loader = new THREE.GLTFLoader();
+//const loader = new THREE.GLTFLoader();
+const loader = new GLTFLoader();
 async function loadModels() {
     
     for (const category of ['table', 'chair', 'shelf']) {
