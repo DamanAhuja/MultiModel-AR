@@ -23,9 +23,9 @@ const setOpacity = (obj, opacity) => {
         }
     });
 };
+const loader = new GLTFLoader();
 async function loadModels() {
-    const loader = new GLTFLoader(); // Instantiate properly
-
+    
     for (const category of ['table', 'chair', 'shelf']) {
         for (let i = 1; i <= 3; i++) {
             const modelId = `${category}${i}`;
