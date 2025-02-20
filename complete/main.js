@@ -297,37 +297,47 @@ document.addEventListener("DOMContentLoaded", () => {
         };
 
         // Load models
-        for (const category of ['table', 'chair', 'shelf']) {
-            for (let i = 1; i <= 3; i++) {
-                const modelId = `${category}${i}`;
-                try {
-                    // Adjusted path to match the correct file naming convention
-                    const model = await loadGLTF(`../assets/models/${category}/${category}${i}.glb`);
-                    normalizeModel(model.scene, 0.5);
-                    const item = new THREE.Group();
-                    item.add(model.scene);
-                    loadedModels.set(modelId, item);
+        const loader = new THREE.GLTFLoader(); // Create a single instance of the loader
 
-                    // Find button by ID that matches the model ID
-                    const button = document.querySelector(`#${modelId}`);
-                    if (button) {
-                        button.addEventListener("click", (e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
+    for (const category of ['table', 'chair', 'shelf']) {
+        for (let i = 1; i <= 3; i++) {
+            const modelId = `${category}${i}`;
+            try {
+                // Load the model using a Promise wrapper
+                const model = await new Promise((resolve, reject) => {
+                    loader.load(
+                        `../assets/models/${category}/${modelId}.glb`,
+                        (gltf) => resolve(gltf),
+                        undefined,
+                        (error) => reject(error)
+                    );
+                });
 
-                            // Get model directly by ID
-                            const model = loadedModels.get(modelId);
-                            if (model) {
-                                const modelClone = model.clone(true);
-                                showModel(modelClone);
-                            }
-                        });
-                    }
-                } catch (error) {
-                    console.error(`Error loading model ${category}/${category}${i}.glb:`, error);
+                normalizeModel(model.scene, 0.5);
+                const item = new THREE.Group();
+                item.add(model.scene);
+                loadedModels.set(modelId, item);
+
+                // Attach event listener to button
+                const button = document.querySelector(`#${modelId}`);
+                if (button) {
+                    button.addEventListener("click", (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+
+                        // Clone and display the model
+                        const model = loadedModels.get(modelId);
+                        if (model) {
+                            const modelClone = model.clone(true);
+                            showModel(modelClone);
+                        }
+                    });
                 }
+            } catch (error) {
+                console.error(`Error loading model ${category}/${modelId}.glb:`, error);
             }
         }
+    }
 
 
         // Button Event Listeners
