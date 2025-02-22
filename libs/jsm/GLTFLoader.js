@@ -132,76 +132,53 @@ class GLTFLoader extends Loader {
 
 	}
 
-	load( url, onLoad, onProgress, onError ) {
+load(url, onLoad, onProgress, onError) {
+    const scope = this;
+    let resourcePath = this.resourcePath || this.path || THREE.LoaderUtils.extractUrlBase(url);
 
-		const scope = this;
+    this.manager.itemStart(url);
 
-		let resourcePath;
+    const _onError = function (e) {
+        if (onError) {
+            onError(e);
+        } else {
+            console.error(e);
+        }
+        scope.manager.itemError(url);
+        scope.manager.itemEnd(url);
+    };
 
-		if ( this.resourcePath !== '' ) {
+    const loader = new THREE.FileLoader(this.manager);
+    loader.setPath(this.path);
+    loader.setResponseType('arraybuffer'); // Load as binary buffer
+    loader.setRequestHeader(this.requestHeader);
+    loader.setWithCredentials(this.withCredentials);
 
-			resourcePath = this.resourcePath;
+    loader.load(url, function (data) {
+        try {
+            const magic = new TextDecoder().decode(new Uint8Array(data, 0, 4));
 
-		} else if ( this.path !== '' ) {
+            if (magic === 'glTF') {
+                // JSON .gltf file
+                const json = JSON.parse(new TextDecoder().decode(new Uint8Array(data)));
+                scope.json = json; // Ensure json is set
+                scope.parse(onLoad, _onError);
+            } else if (magic === 'glb\u0002') {
+                // Binary .glb file
+                const gltfLoader = new THREE.GLTFLoader();
+                gltfLoader.parse(data, resourcePath, function (gltf) {
+                    onLoad(gltf);
+                    scope.manager.itemEnd(url);
+                }, _onError);
+            } else {
+                _onError(new Error('Invalid GLTF/GLB file format'));
+            }
 
-			resourcePath = this.path;
-
-		} else {
-
-			resourcePath = LoaderUtils.extractUrlBase( url );
-
-		}
-
-		// Tells the LoadingManager to track an extra item, which resolves after
-		// the model is fully loaded. This means the count of items loaded will
-		// be incorrect, but ensures manager.onLoad() does not fire early.
-		this.manager.itemStart( url );
-
-		const _onError = function ( e ) {
-
-			if ( onError ) {
-
-				onError( e );
-
-			} else {
-
-				console.error( e );
-
-			}
-
-			scope.manager.itemError( url );
-			scope.manager.itemEnd( url );
-
-		};
-
-		const loader = new FileLoader( this.manager );
-
-		loader.setPath( this.path );
-		loader.setResponseType( 'arraybuffer' );
-		loader.setRequestHeader( this.requestHeader );
-		loader.setWithCredentials( this.withCredentials );
-
-		loader.load( url, function ( data ) {
-
-			try {
-
-				scope.parse( data, resourcePath, function ( gltf ) {
-
-					onLoad( gltf );
-
-					scope.manager.itemEnd( url );
-
-				}, _onError );
-
-			} catch ( e ) {
-
-				_onError( e );
-
-			}
-
-		}, onProgress, _onError );
-
-	}
+        } catch (e) {
+            _onError(e);
+        }
+    }, onProgress, _onError);
+}
 
 	setDRACOLoader( dracoLoader ) {
 
