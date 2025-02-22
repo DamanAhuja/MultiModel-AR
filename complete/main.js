@@ -27,7 +27,7 @@ const setOpacity = (obj, opacity) => {
 
 async function loadModels() {
     
-    for (const category of ['table', 'chair', 'shelf']) {
+    for (const category of ['table', 'lamp', 'sofa']) {
         for (let i = 1; i <= 3; i++) {
             const modelId = `${category}${i}`;
             try {
