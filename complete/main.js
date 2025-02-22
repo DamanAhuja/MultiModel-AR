@@ -27,7 +27,7 @@ const setOpacity = (obj, opacity) => {
 
 async function loadModels() {
     
-    for (const category of ['table', 'lamp', 'sofa']) {
+    /*for (const category of ['table', 'lamp', 'sofa']) {
         for (let i = 1; i <= 3; i++) {
             const modelId = `${category}${i}`;
             try {
@@ -62,6 +62,35 @@ async function loadModels() {
                 console.error(`Error loading model ${category}/${modelId}.glb:`, error);
             }
         }
+    }*/
+    for (const category in itemCategories) {
+            for (const itemInfo of itemCategories[category]) {
+                try {
+                    const model = await loadGLTF(`../assets/models/${category}/${itemInfo.name}/scene.gltf`);
+                    normalizeModel(model.scene, itemInfo.height);
+
+                    const item = new THREE.Group();
+                    item.add(model.scene);
+                    
+                    loadedModels.set(`${category}-${itemInfo.name}`, item);
+
+                    const thumbnail = document.querySelector(`#${category}-${itemInfo.name}`);
+                    if (thumbnail) {
+                        thumbnail.addEventListener("click", (e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            const model = loadedModels.get(`${category}-${itemInfo.name}`);
+                            if (model) {
+                                const modelClone = deepClone(model);
+                                showModel(modelClone);
+                            }
+                        });
+                    }
+                } 
+                catch (error) {
+                    console.error(`Error loading model ${category}/${itemInfo.name}:`, error);
+                }
+            }
     }
 }
 
