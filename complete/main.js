@@ -1,12 +1,8 @@
-import { loadGLTF } from "../libs/loader.js";
 import * as THREE from "../libs/three123/three.module.js";
 import { ARButton } from "../libs/jsm/ARButton.js";
 import { GLTFLoader } from "../libs/jsm/GLTFLoader.js";
 
-// Initialize global variables
 const loader = new GLTFLoader();
-const loadedModels = new Map();
-
 // Utility functions
 const normalizeModel = (obj, height) => {
     const bbox = new THREE.Box3().setFromObject(obj);
@@ -26,6 +22,47 @@ const setOpacity = (obj, opacity) => {
         }
     });
 };
+//const loader = new THREE.GLTFLoader();
+
+async function loadModels() {
+    
+    for (const category of ['table', 'chair', 'shelf']) {
+        for (let i = 1; i <= 3; i++) {
+            const modelId = `${category}${i}`;
+            try {
+                const model = await new Promise((resolve, reject) => {
+                    loader.load(
+                        `../assets/models/${category}/${modelId}.glb`,
+                        resolve,
+                        undefined,
+                        reject
+                    );
+                });
+
+                normalizeModel(model.scene, 0.5);
+                const item = new THREE.Group();
+                item.add(model.scene);
+                loadedModels.set(modelId, item);
+
+                const button = document.querySelector(`#${modelId}`);
+                if (button) {
+                    button.addEventListener("click", (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+
+                        const model = loadedModels.get(modelId);
+                        if (model) {
+                            const modelClone = model.clone(true);
+                            showModel(modelClone);
+                        }
+                    });
+                }
+            } catch (error) {
+                console.error(`Error loading model ${category}/${modelId}.glb:`, error);
+            }
+        }
+    }
+}
 
 const deepClone = (obj) => {
     const newObj = obj.clone();
@@ -37,52 +74,23 @@ const deepClone = (obj) => {
     return newObj;
 };
 
-async function loadModels() {
-    try {
-        for (const category of ['table', 'chair', 'shelf']) {
-            for (let i = 1; i <= 3; i++) {
-                const modelId = `${category}${i}`;
-                try {
-                    const model = await new Promise((resolve, reject) => {
-                        loader.load(
-                            `../assets/models/${category}/${modelId}.glb`,
-                            (gltf) => {
-                                normalizeModel(gltf.scene, 0.5);
-                                const item = new THREE.Group();
-                                item.add(gltf.scene);
-                                resolve(item);
-                            },
-                            (progress) => {
-                                console.log(`Loading ${modelId}: ${(progress.loaded / progress.total * 100)}%`);
-                            },
-                            reject
-                        );
-                    });
-
-                    loadedModels.set(modelId, model);
-
-                    const button = document.querySelector(`#${modelId}`);
-                    if (button) {
-                        button.addEventListener("click", (e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-
-                            const modelToShow = loadedModels.get(modelId);
-                            if (modelToShow) {
-                                const modelClone = modelToShow.clone(true);
-                                showModel(modelClone);
-                            }
-                        });
-                    }
-                } catch (error) {
-                    console.error(`Error loading model ${category}/${modelId}.glb:`, error);
-                }
-            }
-        }
-    } catch (error) {
-        console.error('Error in loadModels:', error);
-    }
-}
+const itemCategories = {
+    lamp: [
+        { name: "lamp1", height: 0.3 },
+        { name: "lamp2", height: 0.35 },
+        { name: "lamp3", height: 0.28 }
+    ],
+    sofa: [
+        { name: "sofa1", height: 0.1 },
+        { name: "sofa2", height: 0.12 },
+        { name: "sofa3", height: 0.15 }
+    ],
+    table: [
+        { name: "table1", height: 0.2 },
+        { name: "table2", height: 0.25 },
+        { name: "table3", height: 0.22 }
+    ]
+};
 
 document.addEventListener("DOMContentLoaded", () => {
     const initialize = async () => {
@@ -102,7 +110,7 @@ document.addEventListener("DOMContentLoaded", () => {
         scene.add(light);
         scene.add(directionalLight);
 
-        // Initialize AR
+        // Initialize AR first
         const arButton = ARButton.createButton(renderer, {
             requiredFeatures: ["hit-test"],
             optionalFeatures: ["dom-overlay"],
@@ -139,12 +147,13 @@ document.addEventListener("DOMContentLoaded", () => {
         scene.add(reticle);
 
         // Model Management
+        const loadedModels = new Map();
         const placedItems = [];
         let previewItem = null;
         let hitTestSource = null;
         let hitTestSourceRequested = false;
 
-        // Touch event utility
+        // Calculate distance between two touch points
         const getTouchDistance = (touch1, touch2) => {
             const dx = touch1.pageX - touch2.pageX;
             const dy = touch1.pageY - touch2.pageY;
@@ -156,6 +165,7 @@ document.addEventListener("DOMContentLoaded", () => {
             event.preventDefault();
             
             if (event.touches.length === 1) {
+                // Single touch for rotation
                 touches.x = (event.touches[0].pageX / window.innerWidth) * 2 - 1;
                 touches.y = -(event.touches[0].pageY / window.innerHeight) * 2 + 1;
                 
@@ -189,15 +199,18 @@ document.addEventListener("DOMContentLoaded", () => {
             event.preventDefault();
             
             if (isRotating && event.touches.length === 1) {
+                // Horizontal rotation only
                 const deltaX = event.touches[0].pageX - previousTouchX;
                 selectedObject.rotation.y += deltaX * 0.01;
                 previousTouchX = event.touches[0].pageX;
             } else if (event.touches.length === 2 && selectedObject) {
+                // Handle both dragging and scaling with two fingers
                 const currentPinchDistance = getTouchDistance(event.touches[0], event.touches[1]);
                 const currentCenterX = (event.touches[0].pageX + event.touches[1].pageX) / 2;
                 const currentCenterY = (event.touches[0].pageY + event.touches[1].pageY) / 2;
 
                 if (isDragging) {
+                    // Handle dragging
                     const deltaX = (currentCenterX - previousTouchX) * 0.01;
                     const deltaY = (currentCenterY - previousTouchY) * 0.01;
                     selectedObject.position.x += deltaX;
@@ -205,9 +218,11 @@ document.addEventListener("DOMContentLoaded", () => {
                 }
 
                 if (isScaling) {
+                    // Handle scaling
                     const scaleFactor = currentPinchDistance / previousPinchDistance;
                     if (scaleFactor !== 1) {
                         const newScale = selectedObject.scale.x * scaleFactor;
+                        // Limit scaling between 0.5 and 2 times original size
                         if (newScale >= 0.5 && newScale <= 2) {
                             selectedObject.scale.multiplyScalar(scaleFactor);
                         }
@@ -323,8 +338,8 @@ document.addEventListener("DOMContentLoaded", () => {
             }
         };
 
-        // Load models
-        await loadModels();
+        // Call the function to load models
+        loadModels();
 
         // Button Event Listeners
         placeButton.addEventListener("click", placeModel);
