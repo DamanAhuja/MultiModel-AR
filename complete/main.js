@@ -1,10 +1,10 @@
 import * as THREE from "../libs/three123/three.module.js";
 import { ARButton } from "../libs/jsm/ARButton.js";
-import { GLTFLoader } from "../libs/jsm/GLTFLoader.js";
+//import { GLTFLoader } from "../libs/jsm/GLTFLoader.js";
 import { loadGLTF } from "../libs/loader.js";
 
 
-const loader = new GLTFLoader();
+//const loader = new GLTFLoader();
 const loadedModels = new Map();
 // Utility functions
 const normalizeModel = (obj, height) => {
