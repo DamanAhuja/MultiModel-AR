@@ -5,6 +5,7 @@ import { loadGLTF } from "../libs/loader.js";
 
 
 const loader = new GLTFLoader();
+const loadedModels = new Map();
 // Utility functions
 const normalizeModel = (obj, height) => {
     const bbox = new THREE.Box3().setFromObject(obj);
