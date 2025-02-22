@@ -69,7 +69,7 @@ async function loadModels() {
     for (const category in itemCategories) {
             for (const itemInfo of itemCategories[category]) {
                 try {
-                    const modelId = `${category}${i}`;
+                    //const modelId = `${category}${i}`;
                     const model = await loadGLTF(`../assets/models/${category}/${itemInfo.name}.glb`);
                     normalizeModel(model.scene, itemInfo.height);
 
