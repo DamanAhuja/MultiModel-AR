@@ -1,6 +1,6 @@
 import * as THREE from "../libs/three123/three.module.js";
 import { ARButton } from "../libs/jsm/ARButton.js";
-import { GLTFLoader } from "../libs/jsm/loaders/GLTFLoader.js";
+import { GLTFLoader } from "../libs/jsm/GLTFLoader.js";
 
 
 const loader = new GLTFLoader();
