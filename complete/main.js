@@ -33,7 +33,7 @@ async function loadModels() {
             try {
                 const model = await new Promise((resolve, reject) => {
                     loader.load(
-                        `../assets/models/${category}/${modelId}.glb`,
+                        `../assets/models/${category}/${modelId}.gltf`,
                         resolve,
                         undefined,
                         reject
