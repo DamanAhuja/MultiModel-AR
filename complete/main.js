@@ -1,11 +1,7 @@
+import { loadGLTF } from "../libs/loader.js";
 import * as THREE from "../libs/three123/three.module.js";
 import { ARButton } from "../libs/jsm/ARButton.js";
-//import { GLTFLoader } from "../libs/jsm/GLTFLoader.js";
-import { loadGLTF } from "../libs/loader.js";
 
-
-//const loader = new GLTFLoader();
-const loadedModels = new Map();
 // Utility functions
 const normalizeModel = (obj, height) => {
     const bbox = new THREE.Box3().setFromObject(obj);
@@ -25,78 +21,6 @@ const setOpacity = (obj, opacity) => {
         }
     });
 };
-//const loader = new THREE.GLTFLoader();
-
-async function loadModels() {
-    
-    /*for (const category of ['table', 'lamp', 'sofa']) {
-        for (let i = 1; i <= 3; i++) {
-            const modelId = `${category}${i}`;
-            try {
-                const model = await new Promise((resolve, reject) => {
-                    loader.load(
-                        `../assets/models/${category}/${modelId}.gltf`,
-                        resolve,
-                        undefined,
-                        reject
-                    );
-                });
-
-                normalizeModel(model.scene, 0.5);
-                const item = new THREE.Group();
-                item.add(model.scene);
-                loadedModels.set(modelId, item);
-
-                const button = document.querySelector(`#${modelId}`);
-                if (button) {
-                    button.addEventListener("click", (e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-
-                        const model = loadedModels.get(modelId);
-                        if (model) {
-                            const modelClone = model.clone(true);
-                            showModel(modelClone);
-                        }
-                    });
-                }
-            } catch (error) {
-                console.error(`Error loading model ${category}/${modelId}.glb:`, error);
-            }
-        }
-    }*/
-    //let index = 0;
-    for (const category in itemCategories) {
-            for (const itemInfo of itemCategories[category]) {
-                try {
-                    //const modelId = `${category}${i}`;
-                    const model = await loadGLTF(`../assets/models/${category}/${itemInfo.name}.glb`);
-                    normalizeModel(model.scene, itemInfo.height);
-
-                    const item = new THREE.Group();
-                    item.add(model.scene);
-                    
-                    loadedModels.set(`${category}-${itemInfo.name}`, item);
-
-                    const thumbnail = document.querySelector(`#${category}-${itemInfo.name}`);
-                    if (thumbnail) {
-                        thumbnail.addEventListener("click", (e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            const model = loadedModels.get(`${category}-${itemInfo.name}`);
-                            if (model) {
-                                const modelClone = deepClone(model);
-                                showModel(modelClone);
-                            }
-                        });
-                    }
-                } 
-                catch (error) {
-                    console.error(`Error loading model ${category}/${itemInfo.name}:`, error);
-                }
-            }
-    }
-}
 
 const deepClone = (obj) => {
     const newObj = obj.clone();
@@ -144,28 +68,17 @@ document.addEventListener("DOMContentLoaded", () => {
         scene.add(light);
         scene.add(directionalLight);
 
-        // Initialize AR first
-        const arButton = ARButton.createButton(renderer, {
-            requiredFeatures: ["hit-test"],
-            optionalFeatures: ["dom-overlay"],
-            domOverlay: { root: document.body },
-            sessionInit: {
-                optionalFeatures: ['dom-overlay'],
-                domOverlay: { root: document.body }
-            }
-        });
-        document.body.appendChild(arButton);
-
         // Raycaster setup
         const raycaster = new THREE.Raycaster();
         const touches = new THREE.Vector2();
         let selectedObject = null;
         let isDragging = false;
         let isRotating = false;
-        let isScaling = false;
+        let isPinching = false;
+        let initialPinchDistance = 0;
+        let initialScale = 1;
         let previousTouchX = 0;
         let previousTouchY = 0;
-        let previousPinchDistance = 0;
 
         // Controller setup for AR
         const controller = renderer.xr.getController(0);
@@ -180,6 +93,14 @@ document.addEventListener("DOMContentLoaded", () => {
         reticle.matrixAutoUpdate = false;
         scene.add(reticle);
 
+        // UI Elements setup
+        const menuButton = document.getElementById("menu-button");
+        const closeButton = document.getElementById("close-button");
+        const sidebarMenu = document.getElementById("sidebar-menu");
+        const confirmButtons = document.getElementById("confirm-buttons");
+        const placeButton = document.querySelector("#place");
+        const cancelButton = document.querySelector("#cancel");
+
         // Model Management
         const loadedModels = new Map();
         const placedItems = [];
@@ -187,19 +108,12 @@ document.addEventListener("DOMContentLoaded", () => {
         let hitTestSource = null;
         let hitTestSourceRequested = false;
 
-        // Calculate distance between two touch points
-        const getTouchDistance = (touch1, touch2) => {
-            const dx = touch1.pageX - touch2.pageX;
-            const dy = touch1.pageY - touch2.pageY;
-            return Math.sqrt(dx * dx + dy * dy);
-        };
-
         // Touch event handlers
         const onTouchStart = (event) => {
             event.preventDefault();
             
             if (event.touches.length === 1) {
-                // Single touch for rotation
+                // Single touch for selection or rotation
                 touches.x = (event.touches[0].pageX / window.innerWidth) * 2 - 1;
                 touches.y = -(event.touches[0].pageY / window.innerHeight) * 2 + 1;
                 
@@ -212,19 +126,28 @@ document.addEventListener("DOMContentLoaded", () => {
                     previousTouchX = event.touches[0].pageX;
                 }
             } else if (event.touches.length === 2) {
-                touches.x = (((event.touches[0].pageX + event.touches[1].pageX) / 2) / window.innerWidth) * 2 - 1;
-                touches.y = -(((event.touches[0].pageY + event.touches[1].pageY) / 2) / window.innerHeight) * 2 + 1;
+                // Two finger touch for scaling or dragging
+                const dx = event.touches[0].pageX - event.touches[1].pageX;
+                const dy = event.touches[0].pageY - event.touches[1].pageY;
+                initialPinchDistance = Math.sqrt(dx * dx + dy * dy);
                 
-                raycaster.setFromCamera(touches, camera);
-                const intersects = raycaster.intersectObjects(placedItems, true);
-                
-                if (intersects.length > 0) {
-                    selectedObject = intersects[0].object.parent;
-                    previousPinchDistance = getTouchDistance(event.touches[0], event.touches[1]);
-                    previousTouchX = (event.touches[0].pageX + event.touches[1].pageX) / 2;
-                    previousTouchY = (event.touches[0].pageY + event.touches[1].pageY) / 2;
-                    isDragging = true;
-                    isScaling = true;
+                if (selectedObject) {
+                    isPinching = true;
+                    initialScale = selectedObject.scale.x;
+                } else {
+                    // Check if we're starting a drag
+                    touches.x = (((event.touches[0].pageX + event.touches[1].pageX) / 2) / window.innerWidth) * 2 - 1;
+                    touches.y = -(((event.touches[0].pageY + event.touches[1].pageY) / 2) / window.innerHeight) * 2 + 1;
+                    
+                    raycaster.setFromCamera(touches, camera);
+                    const intersects = raycaster.intersectObjects(placedItems, true);
+                    
+                    if (intersects.length > 0) {
+                        selectedObject = intersects[0].object.parent;
+                        isDragging = true;
+                        previousTouchX = (event.touches[0].pageX + event.touches[1].pageX) / 2;
+                        previousTouchY = (event.touches[0].pageY + event.touches[1].pageY) / 2;
+                    }
                 }
             }
         };
@@ -233,47 +156,38 @@ document.addEventListener("DOMContentLoaded", () => {
             event.preventDefault();
             
             if (isRotating && event.touches.length === 1) {
-                // Horizontal rotation only
+                // Rotate object
                 const deltaX = event.touches[0].pageX - previousTouchX;
                 selectedObject.rotation.y += deltaX * 0.01;
                 previousTouchX = event.touches[0].pageX;
-            } else if (event.touches.length === 2 && selectedObject) {
-                // Handle both dragging and scaling with two fingers
-                const currentPinchDistance = getTouchDistance(event.touches[0], event.touches[1]);
-                const currentCenterX = (event.touches[0].pageX + event.touches[1].pageX) / 2;
-                const currentCenterY = (event.touches[0].pageY + event.touches[1].pageY) / 2;
-
-                if (isDragging) {
-                    // Handle dragging
-                    const deltaX = (currentCenterX - previousTouchX) * 0.01;
-                    const deltaY = (currentCenterY - previousTouchY) * 0.01;
-                    selectedObject.position.x += deltaX;
-                    selectedObject.position.z += deltaY;
-                }
-
-                if (isScaling) {
-                    // Handle scaling
-                    const scaleFactor = currentPinchDistance / previousPinchDistance;
-                    if (scaleFactor !== 1) {
-                        const newScale = selectedObject.scale.x * scaleFactor;
-                        // Limit scaling between 0.5 and 2 times original size
-                        if (newScale >= 0.5 && newScale <= 2) {
-                            selectedObject.scale.multiplyScalar(scaleFactor);
-                        }
-                    }
-                }
-
-                previousPinchDistance = currentPinchDistance;
-                previousTouchX = currentCenterX;
-                previousTouchY = currentCenterY;
+            } else if (isPinching && event.touches.length === 2) {
+                // Scale object
+                const dx = event.touches[0].pageX - event.touches[1].pageX;
+                const dy = event.touches[0].pageY - event.touches[1].pageY;
+                const pinchDistance = Math.sqrt(dx * dx + dy * dy);
+                const scale = (pinchDistance / initialPinchDistance) * initialScale;
+                selectedObject.scale.set(scale, scale, scale);
+            } else if (isDragging && event.touches.length === 2) {
+                // Move object
+                const currentX = (event.touches[0].pageX + event.touches[1].pageX) / 2;
+                const currentY = (event.touches[0].pageY + event.touches[1].pageY) / 2;
+                
+                const deltaX = (currentX - previousTouchX) * 0.01;
+                const deltaY = (currentY - previousTouchY) * 0.01;
+                
+                selectedObject.position.x += deltaX;
+                selectedObject.position.z += deltaY;
+                
+                previousTouchX = currentX;
+                previousTouchY = currentY;
             }
         };
 
         const onTouchEnd = (event) => {
             if (event.touches.length === 0) {
                 isRotating = false;
+                isPinching = false;
                 isDragging = false;
-                isScaling = false;
                 selectedObject = null;
             }
         };
@@ -282,14 +196,6 @@ document.addEventListener("DOMContentLoaded", () => {
         renderer.domElement.addEventListener('touchstart', onTouchStart, false);
         renderer.domElement.addEventListener('touchmove', onTouchMove, false);
         renderer.domElement.addEventListener('touchend', onTouchEnd, false);
-
-        // UI Elements setup
-        const menuButton = document.getElementById("menu-button");
-        const closeButton = document.getElementById("close-button");
-        const sidebarMenu = document.getElementById("sidebar-menu");
-        const confirmButtons = document.getElementById("confirm-buttons");
-        const placeButton = document.querySelector("#place");
-        const cancelButton = document.querySelector("#cancel");
 
         // Menu event handlers
         document.addEventListener("click", (event) => {
@@ -350,6 +256,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 const clone = deepClone(previewItem);
                 setOpacity(clone, 1.0);
                 
+                // Get the reticle's world position and rotation
                 const position = new THREE.Vector3();
                 const rotation = new THREE.Quaternion();
                 const scale = new THREE.Vector3();
@@ -372,12 +279,51 @@ document.addEventListener("DOMContentLoaded", () => {
             }
         };
 
-        // Call the function to load models
-        loadModels();
+        // Load models
+        for (const category in itemCategories) {
+            for (const itemInfo of itemCategories[category]) {
+                try {
+                    const model = await loadGLTF(`../assets/models/${category}/${itemInfo.name}/scene.gltf`);
+                    normalizeModel(model.scene, itemInfo.height);
+
+                    const item = new THREE.Group();
+                    item.add(model.scene);
+                    
+                    loadedModels.set(`${category}-${itemInfo.name}`, item);
+
+                    const thumbnail = document.querySelector(`#${category}-${itemInfo.name}`);
+                    if (thumbnail) {
+                        thumbnail.addEventListener("click", (e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            const model = loadedModels.get(`${category}-${itemInfo.name}`);
+                            if (model) {
+                                const modelClone = deepClone(model);
+                                showModel(modelClone);
+                            }
+                        });
+                    }
+                } catch (error) {
+                    console.error(`Error loading model ${category}/${itemInfo.name}:`, error);
+                }
+            }
+        }
 
         // Button Event Listeners
         placeButton.addEventListener("click", placeModel);
         cancelButton.addEventListener("click", cancelModel);
+
+        // Initialize AR
+        const arButton = ARButton.createButton(renderer, {
+            requiredFeatures: ["hit-test"],
+            optionalFeatures: ["dom-overlay"],
+            domOverlay: { root: document.body },
+            sessionInit: {
+                optionalFeatures: ['dom-overlay'],
+                domOverlay: { root: document.body }
+            }
+        });
+        document.body.appendChild(arButton);
 
         // AR Session and Render Loop
         renderer.setAnimationLoop((timestamp, frame) => {
