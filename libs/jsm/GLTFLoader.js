@@ -63,7 +63,6 @@ import {
 	VectorKeyframeTrack,
 	sRGBEncoding
 } from '../three123/three.module.js';
-import * as THREE from "../three123/three.module.js";
 
 class GLTFLoader extends Loader {
 
@@ -133,56 +132,76 @@ class GLTFLoader extends Loader {
 
 	}
 
-load(url, onLoad, onProgress, onError) {
-    const scope = this;
-    let resourcePath = this.resourcePath || this.path || THREE.LoaderUtils.extractUrlBase(url);
+	load( url, onLoad, onProgress, onError ) {
 
-    this.manager.itemStart(url);
+		const scope = this;
 
-    const _onError = function (e) {
-        if (onError) {
-            onError(e);
-        } else {
-            console.error(e);
-        }
-        scope.manager.itemError(url);
-        scope.manager.itemEnd(url);
-    };
+		let resourcePath;
 
-    const loader = new THREE.FileLoader(this.manager);
-    loader.setPath(this.path);
-    loader.setResponseType('arraybuffer'); // Load as binary buffer
-    loader.setRequestHeader(this.requestHeader);
-    loader.setWithCredentials(this.withCredentials);
+		if ( this.resourcePath !== '' ) {
 
-    loader.load(url, function (data) {
-    try {
-        const header = new Uint8Array(data).slice(0, 4); 
-        const magic = new TextDecoder().decode(header);
+			resourcePath = this.resourcePath;
 
-        console.log("Detected Magic Bytes:", magic); // Debugging log
+		} else if ( this.path !== '' ) {
 
-        if (magic === 'glTF') {
-            // JSON .gltf file
-            const json = JSON.parse(new TextDecoder().decode(new Uint8Array(data)));
-            scope.json = json; // Ensure json is set
-            scope.parse(onLoad, _onError);
-        } else if (header[0] === 0x67 && header[1] === 0x6C && header[2] === 0x54 && header[3] === 0x46) {
-            // Binary .glb file (Magic bytes: 103 108 84 70 = "glTF")
-            const gltfLoader = new THREE.GLTFLoader(); // Ensure GLTFLoader is imported
-            gltfLoader.parse(data, resourcePath, function (gltf) {
-                onLoad(gltf);
-                scope.manager.itemEnd(url);
-            }, _onError);
-        } else {
-            _onError(new Error('Invalid GLTF/GLB file format: ' + magic));
-        }
+			resourcePath = this.path;
 
-    } catch (e) {
-        _onError(e);
-    }
-}, onProgress, _onError);
-}
+		} else {
+
+			resourcePath = LoaderUtils.extractUrlBase( url );
+
+		}
+
+		// Tells the LoadingManager to track an extra item, which resolves after
+		// the model is fully loaded. This means the count of items loaded will
+		// be incorrect, but ensures manager.onLoad() does not fire early.
+		this.manager.itemStart( url );
+
+		const _onError = function ( e ) {
+
+			if ( onError ) {
+
+				onError( e );
+
+			} else {
+
+				console.error( e );
+
+			}
+
+			scope.manager.itemError( url );
+			scope.manager.itemEnd( url );
+
+		};
+
+		const loader = new FileLoader( this.manager );
+
+		loader.setPath( this.path );
+		loader.setResponseType( 'arraybuffer' );
+		loader.setRequestHeader( this.requestHeader );
+		loader.setWithCredentials( this.withCredentials );
+
+		loader.load( url, function ( data ) {
+
+			try {
+
+				scope.parse( data, resourcePath, function ( gltf ) {
+
+					onLoad( gltf );
+
+					scope.manager.itemEnd( url );
+
+				}, _onError );
+
+			} catch ( e ) {
+
+				_onError( e );
+
+			}
+
+		}, onProgress, _onError );
+
+	}
 
 	setDRACOLoader( dracoLoader ) {
 
