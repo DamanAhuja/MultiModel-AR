@@ -182,7 +182,7 @@ load(url, onLoad, onProgress, onError) {
         _onError(e);
     }
 }, onProgress, _onError);
-
+}
 
 	setDRACOLoader( dracoLoader ) {
 
