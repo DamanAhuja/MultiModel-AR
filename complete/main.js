@@ -280,17 +280,22 @@ document.addEventListener("DOMContentLoaded", () => {
         };
 
         // Load models
-        for (const category in itemCategories) {
-            for (const itemInfo of itemCategories[category]) {
-                try {
-                    const modelPath = `../assets/models/${category}/${itemInfo.name}.glb`;
-                    console.log(modelPath); 
-                    const model = await loadGLTF(`../assets/models/${category}/${itemInfo.name}.glb`);
-                    normalizeModel(model.scene, itemInfo.height);
+        const loader = new GLTFLoader();
+
+for (const category in itemCategories) {
+    for (const itemInfo of itemCategories[category]) {
+        try {
+            const modelPath = `../assets/models/${category}/${itemInfo.name}.glb`;
+            console.log(modelPath);
+
+            loader.load(
+                modelPath,
+                function (gltf) {
+                    normalizeModel(gltf.scene, itemInfo.height);
 
                     const item = new THREE.Group();
-                    item.add(model.scene);
-                    
+                    item.add(gltf.scene);
+
                     loadedModels.set(`${category}-${itemInfo.name}`, item);
 
                     const thumbnail = document.querySelector(`#${category}-${itemInfo.name}`);
@@ -305,11 +310,18 @@ document.addEventListener("DOMContentLoaded", () => {
                             }
                         });
                     }
-                } catch (error) {
+                },
+                undefined,
+                function (error) {
                     console.error(`Error loading model ${category}/${itemInfo.name}:`, error);
                 }
-            }
+            );
+        } catch (error) {
+            console.error(`Error processing model ${category}/${itemInfo.name}:`, error);
         }
+    }
+}
+
 
         // Button Event Listeners
         placeButton.addEventListener("click", placeModel);
