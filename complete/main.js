@@ -285,11 +285,11 @@ document.addEventListener("DOMContentLoaded", () => {
 for (const category in itemCategories) {
     for (const itemInfo of itemCategories[category]) {
         try {
-            const modelPath = `../assets/models/${category}/${itemInfo.name}.glb`;
+            const url = `https://raw.githubusercontent.com/devanshi-j/Base-AR-Experience/refs/heads/main/assets/knight.glb`;
             console.log(modelPath);
 
             loader.load(
-                modelPath,
+                url,
                 function (gltf) {
                     normalizeModel(gltf.scene, itemInfo.height);
 
