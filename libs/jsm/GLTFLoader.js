@@ -156,30 +156,33 @@ load(url, onLoad, onProgress, onError) {
     loader.setWithCredentials(this.withCredentials);
 
     loader.load(url, function (data) {
-        try {
-            const magic = new TextDecoder().decode(new Uint8Array(data, 0, 4));
+    try {
+        const header = new Uint8Array(data).slice(0, 4); 
+        const magic = new TextDecoder().decode(header);
 
-            if (magic === 'glTF') {
-                // JSON .gltf file
-                const json = JSON.parse(new TextDecoder().decode(new Uint8Array(data)));
-                scope.json = json; // Ensure json is set
-                scope.parse(onLoad, _onError);
-            } else if (magic === 'glb\u0002') {
-                // Binary .glb file
-                const gltfLoader = new THREE.GLTFLoader();
-                gltfLoader.parse(data, resourcePath, function (gltf) {
-                    onLoad(gltf);
-                    scope.manager.itemEnd(url);
-                }, _onError);
-            } else {
-                _onError(new Error('Invalid GLTF/GLB file format'));
-            }
+        console.log("Detected Magic Bytes:", magic); // Debugging log
 
-        } catch (e) {
-            _onError(e);
+        if (magic === 'glTF') {
+            // JSON .gltf file
+            const json = JSON.parse(new TextDecoder().decode(new Uint8Array(data)));
+            scope.json = json; // Ensure json is set
+            scope.parse(onLoad, _onError);
+        } else if (header[0] === 0x67 && header[1] === 0x6C && header[2] === 0x54 && header[3] === 0x46) {
+            // Binary .glb file (Magic bytes: 103 108 84 70 = "glTF")
+            const gltfLoader = new GLTFLoader(); // Ensure GLTFLoader is imported
+            gltfLoader.parse(data, resourcePath, function (gltf) {
+                onLoad(gltf);
+                scope.manager.itemEnd(url);
+            }, _onError);
+        } else {
+            _onError(new Error('Invalid GLTF/GLB file format: ' + magic));
         }
-    }, onProgress, _onError);
-}
+
+    } catch (e) {
+        _onError(e);
+    }
+}, onProgress, _onError);
+
 
 	setDRACOLoader( dracoLoader ) {
 
