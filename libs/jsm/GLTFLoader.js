@@ -169,7 +169,7 @@ load(url, onLoad, onProgress, onError) {
             scope.parse(onLoad, _onError);
         } else if (header[0] === 0x67 && header[1] === 0x6C && header[2] === 0x54 && header[3] === 0x46) {
             // Binary .glb file (Magic bytes: 103 108 84 70 = "glTF")
-            const gltfLoader = new GLTFLoader(); // Ensure GLTFLoader is imported
+            const gltfLoader = new THREE.GLTFLoader(); // Ensure GLTFLoader is imported
             gltfLoader.parse(data, resourcePath, function (gltf) {
                 onLoad(gltf);
                 scope.manager.itemEnd(url);
