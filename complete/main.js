@@ -286,7 +286,7 @@ for (const category in itemCategories) {
     for (const itemInfo of itemCategories[category]) {
         try {
             const url = `https://raw.githubusercontent.com/devanshi-j/Base-AR-Experience/refs/heads/main/assets/knight.glb`;
-            console.log(modelPath);
+            console.log(url);
 
             loader.load(
                 url,
