@@ -287,7 +287,8 @@ for (const category in itemCategories) {
     for (const itemInfo of itemCategories[category]) {
         try {
             //const url = await loadGLTF(`../assets/models/${category}/${itemInfo.name}/scene.gltf`);
-            const url = `https://raw.githubusercontent.com/devanshi-j/Base-AR-Experience/refs/heads/main/assets/knight.glb`;
+            //const url = `https://raw.githubusercontent.com/devanshi-j/Base-AR-Experience/refs/heads/main/assets/knight.glb`;
+            const url = `https://raw.githubusercontent.com/DamanAhuja/MultiModel-AR/refs/heads/master/assets/models/lamp/lamp1/scene.gltf`;
             console.log(url);
 
             loader.load(
