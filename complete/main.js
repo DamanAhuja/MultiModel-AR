@@ -1,7 +1,7 @@
 import { GLTFLoader } from '../libs/jsm/GLTFLoader.js'; 
 import * as THREE from "../libs/three123/three.module.js";
 import { ARButton } from "../libs/jsm/ARButton.js";
-import { loadGLTF } from "../libs/loader.js";
+//import { loadGLTF } from "../libs/loader.js";
 
 // Utility functions
 const normalizeModel = (obj, height) => {
@@ -286,7 +286,8 @@ document.addEventListener("DOMContentLoaded", () => {
 for (const category in itemCategories) {
     for (const itemInfo of itemCategories[category]) {
         try {
-            const url = await loadGLTF(`../assets/models/${category}/${itemInfo.name}/scene.gltf`);
+            //const url = await loadGLTF(`../assets/models/${category}/${itemInfo.name}/scene.gltf`);
+            const url = `https://raw.githubusercontent.com/devanshi-j/Base-AR-Experience/refs/heads/main/assets/knight.glb`;
             console.log(url);
 
             loader.load(
