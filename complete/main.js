@@ -283,7 +283,7 @@ document.addEventListener("DOMContentLoaded", () => {
         // Load models
         const loader = new GLTFLoader();
 
-for (const category in itemCategories) {
+/*for (const category in itemCategories) {
     for (const itemInfo of itemCategories[category]) {
         try {
             //const url = await loadGLTF(`../assets/models/${category}/${itemInfo.name}/scene.gltf`);
@@ -323,7 +323,40 @@ for (const category in itemCategories) {
             console.error(`Error processing model ${category}/${itemInfo.name}:`, error);
         }
     }
+}*/
+for (const category in itemCategories) {
+    for (const itemInfo of itemCategories[category]) {
+        try {
+            const url = `https://raw.githubusercontent.com/devanshi-j/Base-AR-Experience/refs/heads/main/assets/knight.glb`;
+            console.log(url);
+
+            const model = await loadGLTF(url);
+
+            normalizeModel(model.scene, itemInfo.height);
+
+            const item = new THREE.Group();
+            item.add(model.scene);
+
+            loadedModels.set(`${category}-${itemInfo.name}`, item);
+
+            const thumbnail = document.querySelector(`#${category}-${itemInfo.name}`);
+            if (thumbnail) {
+                thumbnail.addEventListener("click", (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const model = loadedModels.get(`${category}-${itemInfo.name}`);
+                    if (model) {
+                        const modelClone = deepClone(model);
+                        showModel(modelClone);
+                    }
+                });
+            }
+        } catch (error) {
+            console.error(`Error loading model ${category}/${itemInfo.name}:`, error);
+        }
+    }
 }
+
 
 
         // Button Event Listeners
