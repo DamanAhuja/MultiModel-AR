@@ -281,7 +281,7 @@ document.addEventListener("DOMContentLoaded", () => {
         };
 
         // Load models
-        const loader = new GLTFLoader();
+        //const loader = new GLTFLoader();
 
 /*for (const category in itemCategories) {
     for (const itemInfo of itemCategories[category]) {
